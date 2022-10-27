@@ -1,0 +1,4 @@
+fn_args_layout = "Compressed"
+max_width = 110
+use_small_heuristics = "Default"
+use_try_shorthand = true

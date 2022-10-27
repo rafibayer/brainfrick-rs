@@ -1,0 +1,19 @@
+[package]
+name = "brainfuck-rs"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "bfrs"
+path = "src/main.rs"
+
+[dependencies]
+argh = "0.1.9"
+
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "bfrs_bench"
+harness = false
