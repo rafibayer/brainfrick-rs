@@ -7,6 +7,7 @@ pub trait InputOutput {
 }
 
 pub struct StdIO {}
+
 impl InputOutput for StdIO {
     fn getch(&self) -> u8 {
         std::io::stdin().bytes().next().unwrap().unwrap()
@@ -50,6 +51,7 @@ impl InputOutput for Rc<TestIO> {
 /// 0 cost implementation of InputOutput.
 /// Intended for benchmarking.
 /// `getch()` will panic, and `print()` will be ignored.
+#[derive(Clone)]
 pub struct NoIO {}
 impl InputOutput for NoIO {
     #[inline]

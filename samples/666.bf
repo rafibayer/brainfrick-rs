@@ -1,0 +1,3 @@
+[ source: https://github.com/pablojorge/brainfuck/blob/master/programs/666.bf ]
+>+++++++++[<++++++>-]<...
+>++++++++++.
