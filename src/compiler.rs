@@ -67,15 +67,14 @@ pub fn compile(src: &str) -> Program {
 fn get_optimizers() -> Vec<OptimizerType> {
     use OptimizerType::*;
     vec![
-        // contract repeated instructions
+        // contract repeated alts and shifts
         Contraction,
+        // contract alt(0), NoOp, shift(0)
+        NoOpReducer,
         // contract [-]
         ClearLoop,
-        // contract
-        // [alt(-1) shift(n) alt(x>0) shift(-n)],
-        // [shift(n) alt(x>0) shift(-n) alt(-1)],
+        // contract single target copys
         CopyLoop,
-        NoOpReducer,
     ]
 }
 

@@ -31,5 +31,11 @@ fn bench_program(c: &mut Criterion, name: &str, src: &str) {
     });
 }
 
-criterion_group!(benches, bench_hello_world, bench_pi_4, bench_sierpinski);
+criterion_group!(
+    benches,
+    bench_hello_world,
+    bench_pi_4,
+    bench_sierpinski,
+    bench_fib11
+);
 criterion_main!(benches);
