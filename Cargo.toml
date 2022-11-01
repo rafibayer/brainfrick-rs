@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 default-run="bfrs"
 
+[profile.release-dbg]
+inherits = "release"
+debug = true
+
 [[bin]]
 name = "bfrs"
 path = "src/main.rs"

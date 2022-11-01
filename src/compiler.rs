@@ -1,11 +1,17 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    hash::{BuildHasherDefault, Hasher},
+};
 
 use crate::instruction::Instruction;
 
 #[derive(Debug, Clone)]
 pub struct Program {
     pub instructions: Vec<Instruction>,
-    pub loop_map: HashMap<usize, usize>,
+
+    // todo: different hashmap impl
+    pub loop_map: HashMap<usize, usize, BuildIdentityHasher>,
 }
 
 impl Display for Program {
@@ -42,7 +48,7 @@ pub fn compile(src: &str) -> Program {
 
     // Loop instructions, must happen last because
     // optimizers can change position of loop instructions
-    let mut loop_map = HashMap::new();
+    let mut loop_map = HashMap::with_hasher(BuildIdentityHasher::default());
     let mut stack = Vec::new();
     for (ptr, ins) in instructions.iter().enumerate() {
         match *ins {
@@ -205,6 +211,28 @@ fn pop_n<T>(vec: &mut Vec<T>, n: usize) {
     let final_length = vec.len().saturating_sub(n);
     vec.truncate(final_length);
 }
+
+// https://users.rust-lang.org/t/whats-the-most-memory-efficient-way-to-store-a-sparse-vec-while-preserving-the-addresses-without-sacrificing-a-significant-amount-access-speed/25577/25
+#[derive(Debug, Clone, Copy, Default)]
+pub struct IdentityHasher(usize);
+
+impl Hasher for IdentityHasher {
+    fn finish(&self) -> u64 {
+        // todo: static_assert
+        // debug_assert!(self.0 < u64::MAX as usize);
+        return self.0 as u64;
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        unimplemented!("only supports usize");
+    }
+
+    fn write_usize(&mut self, i: usize) {
+        self.0 = i;
+    }
+}
+
+type BuildIdentityHasher = BuildHasherDefault<IdentityHasher>;
 
 #[cfg(test)]
 mod tests {

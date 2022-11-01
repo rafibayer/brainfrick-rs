@@ -3,7 +3,7 @@
 //!
 //! Program: Brainfuck
 
-use std::{fs, path::PathBuf};
+use std::{fs, io, path::PathBuf};
 
 use argh::FromArgs;
 use brainfuck_rs::{compiler::compile, vm::VM};

@@ -17,11 +17,8 @@ pub struct VM<IO: InputOutput> {
     /// Program Memory
     data: Box<[u8; MEM]>,
 
-    /// Instruction Pointer
-    in_ptr: usize,
-
     /// Memory pointer
-    d_ptr: usize,
+    ptr: usize,
 
     /// InputOutput implementation
     io: IO,
@@ -30,8 +27,7 @@ pub struct VM<IO: InputOutput> {
 impl<IO: InputOutput> Display for VM<IO> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut buf = String::from("{\n");
-        buf.push_str(&format!("\tins: {}\n", self.in_ptr));
-        buf.push_str(&format!("\tptr: {}\n", self.d_ptr));
+        buf.push_str(&format!("\tptr: {}\n", self.ptr));
         let mut last_nonzero = 0;
         for i in 0..MEM {
             if self.data[i] != 0 {
@@ -60,50 +56,52 @@ impl<IO: InputOutput> VM<IO> {
         VM {
             program,
             data: Box::new([0; MEM]),
-            in_ptr: 0,
-            d_ptr: 0,
+            ptr: 0,
             io,
         }
     }
 
     pub fn run(&mut self) {
-        while self.in_ptr < self.program.instructions.len() {
+        let mut instruction_ptr = 0;
+
+        while instruction_ptr < self.program.instructions.len() {
             // unless we encounter a loop, we will go to the next
             // instruciton after this one
-            let mut next_ins_ptr = self.in_ptr + 1;
+            let mut next_instruction_pointer = instruction_ptr + 1;
+
+            let instruction = self.program.instructions[instruction_ptr];
 
             // instruction implementations
-            let ins = self.program.instructions[self.in_ptr];
-            match ins {
-                Instruction::Shift(count) => self.d_ptr = ((self.d_ptr as isize + count) as usize) % MEM,
+            match instruction {
+                Instruction::Shift(count) => self.ptr = (self.ptr as isize + count) as usize,
                 Instruction::Alt(amount) => {
                     let new_value = match amount {
-                        _ if amount > 0 => self.data[self.d_ptr].wrapping_add(amount as u8),
-                        _ if amount < 0 => self.data[self.d_ptr].wrapping_sub(-amount as u8),
+                        _ if amount > 0 => self.data[self.ptr].wrapping_add(amount as u8),
+                        _ if amount < 0 => self.data[self.ptr].wrapping_sub(-amount as u8),
                         _ => unreachable!(),
                     };
-                    self.data[self.d_ptr] = new_value;
+                    self.data[self.ptr] = new_value;
                 }
-                Instruction::Out => self.io.print(self.data[self.d_ptr]),
-                Instruction::In => self.data[self.d_ptr] = self.io.getch(),
+                Instruction::Out => self.io.print(self.data[self.ptr]),
+                Instruction::In => self.data[self.ptr] = self.io.getch(),
                 Instruction::Loop => {
-                    if self.data[self.d_ptr] == 0u8 {
-                        next_ins_ptr = self.program.loop_map[&self.in_ptr] + 1;
+                    if self.data[self.ptr] == 0u8 {
+                        next_instruction_pointer = self.program.loop_map[&instruction_ptr] + 1;
                     }
                 }
                 Instruction::End => {
-                    if self.data[self.d_ptr] != 0u8 {
-                        next_ins_ptr = self.program.loop_map[&self.in_ptr] + 1;
+                    if self.data[self.ptr] != 0u8 {
+                        next_instruction_pointer = self.program.loop_map[&instruction_ptr] + 1;
                     }
                 }
                 Instruction::Clear => {
                     // optimized version of [-]
-                    self.data[self.d_ptr] = 0u8;
+                    self.data[self.ptr] = 0u8;
                 }
                 Instruction::Copy { mul, offset } => {
-                    let target_d_ptr = ((self.d_ptr as isize + offset) as usize) % MEM;
+                    let target_d_ptr = ((self.ptr as isize + offset) as usize) % MEM;
                     let new_value =
-                        self.data[target_d_ptr].wrapping_add(self.data[self.d_ptr].wrapping_mul(mul));
+                        self.data[target_d_ptr].wrapping_add(self.data[self.ptr].wrapping_mul(mul));
                     self.data[target_d_ptr] = new_value;
                 }
                 Instruction::NoOp => {
@@ -111,14 +109,14 @@ impl<IO: InputOutput> VM<IO> {
                 }
             };
 
-            self.in_ptr = next_ins_ptr;
+            instruction_ptr = next_instruction_pointer;
         }
     }
 }
 
 #[cfg(test)]
 pub mod tests {
-    use std::{collections::HashMap, rc::Rc};
+    use std::rc::Rc;
 
     use crate::{
         compiler::compile,
