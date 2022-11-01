@@ -16,7 +16,7 @@ sequenceDiagram
         compiler->>compiler: Apply optimization
     end
     compiler->>compiler: pre-match loop braces
-    compiler->>main: compiled/optimizer "Program"
+    compiler->>main: Produce Compiled Program
     main->>vm: Create and run VM for Program
     vm->>io: Utilize configured IO
 ```
