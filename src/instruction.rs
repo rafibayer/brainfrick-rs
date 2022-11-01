@@ -1,5 +1,5 @@
 /// Brainfuck VM Instructions
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instruction {
     /// Command: `>` | '<'
     Shift(isize),

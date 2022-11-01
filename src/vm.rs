@@ -1,4 +1,4 @@
-use std::{fmt::Display, str::from_utf8};
+use std::{collections::VecDeque, fmt::Display, str::from_utf8};
 
 use crate::{
     compiler::Program,
@@ -61,7 +61,7 @@ impl<IO: InputOutput> VM<IO> {
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn run(mut self) {
         let mut instruction_ptr = 0;
 
         while instruction_ptr < self.program.instructions.len() {
@@ -69,16 +69,17 @@ impl<IO: InputOutput> VM<IO> {
             // instruciton after this one
             let mut next_instruction_pointer = instruction_ptr + 1;
 
-            let instruction = self.program.instructions[instruction_ptr];
+            // current instruction to execute
+            let instruction = &self.program.instructions[instruction_ptr];
 
             // instruction implementations
             match instruction {
                 Instruction::Shift(count) => self.ptr = (self.ptr as isize + count) as usize,
                 Instruction::Alt(amount) => {
                     let new_value = match amount {
-                        _ if amount > 0 => self.data[self.ptr].wrapping_add(amount as u8),
-                        _ if amount < 0 => self.data[self.ptr].wrapping_sub(-amount as u8),
-                        _ => unreachable!(),
+                        _ if *amount > 0 => self.data[self.ptr].wrapping_add(*amount as u8),
+                        _ if *amount < 0 => self.data[self.ptr].wrapping_sub(-amount as u8),
+                        _ => self.data[self.ptr],
                     };
                     self.data[self.ptr] = new_value;
                 }
@@ -101,7 +102,7 @@ impl<IO: InputOutput> VM<IO> {
                 Instruction::Copy { mul, offset } => {
                     let target_d_ptr = ((self.ptr as isize + offset) as usize) % MEM;
                     let new_value =
-                        self.data[target_d_ptr].wrapping_add(self.data[self.ptr].wrapping_mul(mul));
+                        self.data[target_d_ptr].wrapping_add(self.data[self.ptr].wrapping_mul(*mul));
                     self.data[target_d_ptr] = new_value;
                 }
                 Instruction::NoOp => {
