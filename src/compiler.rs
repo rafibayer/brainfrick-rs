@@ -6,14 +6,21 @@ use std::{
 
 use crate::instruction::Instruction;
 
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+struct CompilerStats {
+    input_instructions: usize,
+    output_instructions: usize,
+}
+
 #[derive(Debug, Clone)]
 pub struct Program {
     pub instructions: Vec<Instruction>,
-
-    // todo: different hashmap impl
     pub loop_map: HashMap<usize, usize, BuildIdentityHasher>,
+    stats: CompilerStats,
 }
 
+/// Pretty display for Program
 impl Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut indent = 0;
@@ -30,7 +37,7 @@ impl Display for Program {
             }
         }
 
-        write!(f, "{}", buf)
+        write!(f, "{}{:?}", buf, self.stats)
     }
 }
 
@@ -42,11 +49,16 @@ pub fn compile(src: &str) -> Program {
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
 
+    let input_instructions = instructions.len();
+
+    // apply each optmiziation to the instructions
     for optimizer in get_optimizers() {
         instructions = optimizer.optimize(instructions);
     }
 
-    // Loop instructions, must happen last because
+    let output_instructions = instructions.len();
+
+    // match loop instructions, must happen last because
     // optimizers can change position of loop instructions
     let mut loop_map = HashMap::with_hasher(BuildIdentityHasher::default());
     let mut stack = Vec::new();
@@ -62,14 +74,21 @@ pub fn compile(src: &str) -> Program {
         }
     }
 
+    // ensure our program always has balanced loops
     assert_eq!(0, stack.len());
 
+    // Return the final compiled Program
     Program {
         instructions,
         loop_map,
+        stats: CompilerStats {
+            input_instructions,
+            output_instructions,
+        },
     }
 }
 
+/// Returns optimizers to apply to program and their ordering
 fn get_optimizers() -> Vec<OptimizerType> {
     use OptimizerType::*;
     vec![
@@ -96,6 +115,7 @@ enum OptimizerType {
 }
 
 impl Optimizer for OptimizerType {
+    // enum dispatch to apply optimization function on source instructions
     fn optimize(&self, instructions: Vec<Instruction>) -> Vec<Instruction> {
         match self {
             OptimizerType::Contraction => contraction_optimizer(instructions),
@@ -106,6 +126,7 @@ impl Optimizer for OptimizerType {
     }
 }
 
+/// Replace consecutive Shift and Alt instructions with single instructions.
 fn contraction_optimizer(mut instructions: Vec<Instruction>) -> Vec<Instruction> {
     let mut output = Vec::new();
     let mut input = instructions.drain(..).peekable();
@@ -113,6 +134,7 @@ fn contraction_optimizer(mut instructions: Vec<Instruction>) -> Vec<Instruction>
 
     while let Some(cur) = next {
         match cur {
+            // ex: ">><>>" -> Shift(3)
             Instruction::Shift(mut count) => {
                 while let Some(Instruction::Shift(more)) = input.peek() {
                     count += *more;
@@ -121,6 +143,7 @@ fn contraction_optimizer(mut instructions: Vec<Instruction>) -> Vec<Instruction>
 
                 output.push(Instruction::Shift(count));
             }
+            // ex: "+--+-" -> Alt(-1)
             Instruction::Alt(mut count) => {
                 while let Some(Instruction::Alt(more)) = input.peek() {
                     count += *more;
@@ -138,6 +161,7 @@ fn contraction_optimizer(mut instructions: Vec<Instruction>) -> Vec<Instruction>
     output
 }
 
+/// Replace loops to clear the current cell with Clear instructions
 fn clear_loop_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
     use Instruction::*;
     let mut output: Vec<Instruction> = Vec::new();
@@ -146,12 +170,10 @@ fn clear_loop_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
         output.push(instruction);
 
         if output.len() >= 3 {
-            match output[output.len() - 3..] {
-                [Loop, Alt(-1), End] => {
-                    pop_n(&mut output, 3);
-                    output.push(Clear);
-                }
-                _ => {}
+            // ex: "[-]" -> Clear
+            if let [Loop, Alt(-1), End] = output[output.len() - 3..] {
+                remove_n(&mut output, 3);
+                output.push(Clear);
             };
         }
     }
@@ -159,6 +181,7 @@ fn clear_loop_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
     output
 }
 
+/// Replace copy-to/multiply loops with Copy+Clear instructions
 fn copy_loop_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
     use Instruction::*;
     let mut output = Vec::new();
@@ -168,8 +191,9 @@ fn copy_loop_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
 
         if output.len() >= 6 {
             match output[output.len() - 6..] {
+                // ex: "[->>>++<<<]" -> Copy { mul: 2, offset: 3 }, Clear
                 [Loop, Alt(-1), Shift(off1), Alt(x), Shift(off2), End] if x > 0 && off1 == -off2 => {
-                    pop_n(&mut output, 6);
+                    remove_n(&mut output, 6);
 
                     output.push(Copy {
                         mul: x as u8,
@@ -177,8 +201,9 @@ fn copy_loop_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
                     });
                     output.push(Clear);
                 }
+                // ex: "[>>---<<+-]" -> Copy { mul: -3, offset: 2 }, Clear
                 [Loop, Shift(off1), Alt(x), Shift(off2), Alt(-1), End] if x > 0 && off1 == -off2 => {
-                    pop_n(&mut output, 6);
+                    remove_n(&mut output, 6);
 
                     output.push(Copy {
                         mul: x as u8,
@@ -194,6 +219,7 @@ fn copy_loop_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
     output
 }
 
+/// Remove NoOp, Alt(0), Shift(0) instructions
 fn no_op_reducer(instructions: Vec<Instruction>) -> Vec<Instruction> {
     use Instruction::*;
     let mut output = vec![];
@@ -207,11 +233,14 @@ fn no_op_reducer(instructions: Vec<Instruction>) -> Vec<Instruction> {
     output
 }
 
-fn pop_n<T>(vec: &mut Vec<T>, n: usize) {
+/// Helper to remove up to the last n instructions from a `Vec<T>`
+fn remove_n<T>(vec: &mut Vec<T>, n: usize) {
     let final_length = vec.len().saturating_sub(n);
     vec.truncate(final_length);
 }
 
+/// Hasher used for loop brace matching.
+/// We don't need our hash to be DOS resistent, just fast.
 // https://users.rust-lang.org/t/whats-the-most-memory-efficient-way-to-store-a-sparse-vec-while-preserving-the-addresses-without-sacrificing-a-significant-amount-access-speed/25577/25
 #[derive(Debug, Clone, Copy, Default)]
 pub struct IdentityHasher(usize);
@@ -220,10 +249,10 @@ impl Hasher for IdentityHasher {
     fn finish(&self) -> u64 {
         // todo: static_assert
         // debug_assert!(self.0 < u64::MAX as usize);
-        return self.0 as u64;
+        self.0 as u64
     }
 
-    fn write(&mut self, bytes: &[u8]) {
+    fn write(&mut self, _: &[u8]) {
         unimplemented!("only supports usize");
     }
 

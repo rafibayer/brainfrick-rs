@@ -1,11 +1,15 @@
 use core::panic;
 use std::{cell::RefCell, collections::VecDeque, io::Read, rc::Rc};
 
+/// Generic IO trait
 pub trait InputOutput {
+    /// Get a single byte of input
     fn getch(&self) -> u8;
+    /// Output a single byte
     fn print(&self, byte: u8);
 }
 
+/// InputOutput implementor for stdin/stdout
 pub struct StdIO {}
 
 impl InputOutput for StdIO {
@@ -18,6 +22,7 @@ impl InputOutput for StdIO {
     }
 }
 
+/// Test InputOutput implementor
 pub struct TestIO {
     input: RefCell<VecDeque<u8>>,
     output: RefCell<String>,
@@ -48,7 +53,7 @@ impl InputOutput for Rc<TestIO> {
     }
 }
 
-/// 0 cost implementation of InputOutput.
+/// 0-cost InputOutput implementor.
 /// Intended for benchmarking.
 /// `getch()` will panic, and `print()` will be ignored.
 #[derive(Clone)]

@@ -1,9 +1,10 @@
 /// Brainfuck VM Instructions
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instruction {
-    /// Command: `>` | '<'
+    // Standard Brainfuck instructions
+    /// Commands: `>` | '<'
     Shift(isize),
-    /// Command: `+` | '-'
+    /// Commands: `+` | '-'
     Alt(i16),
     /// Command: `.`
     Out,
@@ -15,13 +16,13 @@ pub enum Instruction {
     End,
 
     // Optimized instructions used by the compiler
-    /// NoOp: compiler placeholder
+    /// Compiler-internal placeholder
     NoOp,
+    /// Clear the current cell
     Clear,
-    Copy {
-        mul: u8,
-        offset: isize,
-    },
+    /// Alter the cell specified by its offset relative to the current cell
+    /// by the current cells value times `mul`
+    Copy { mul: u8, offset: isize },
 }
 
 impl TryFrom<char> for Instruction {
@@ -32,6 +33,8 @@ impl TryFrom<char> for Instruction {
     fn try_from(value: char) -> Result<Self, Self::Error> {
         use Instruction::*;
 
+        // Convert each source token into it's corresponding
+        // Instruction, or Err(()) if it is not a valid brainfuck instruction
         Ok(match value {
             '>' => Shift(1),
             '<' => Shift(-1),
@@ -44,18 +47,4 @@ impl TryFrom<char> for Instruction {
             _ => return Err(()),
         })
     }
-}
-
-#[cfg(test)]
-mod tests {
-    // use super::*;
-
-    // #[test]
-    // fn test_parse() {
-    //     use Instruction::*;
-
-    //     let src = "c|om&ment   a [->+<] comment";
-    //     let i = VM::new(src);
-    //     assert_eq!(vec![Loop, Dec, Right, Inc, Left, End], i.instructions);
-    // }
 }

@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, fmt::Display, str::from_utf8};
+use std::fmt::Display;
 
 use crate::{
     compiler::Program,
@@ -12,6 +12,7 @@ const MEM: usize = 30_000;
 /// Brainfuck VM.
 #[derive(Debug, Clone)]
 pub struct VM<IO: InputOutput> {
+    /// Compiled Brainfuck program
     program: Program,
 
     /// Program Memory
@@ -24,6 +25,7 @@ pub struct VM<IO: InputOutput> {
     io: IO,
 }
 
+/// Pretty view of brainfuck VM state
 impl<IO: InputOutput> Display for VM<IO> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut buf = String::from("{\n");
@@ -46,12 +48,16 @@ impl<IO: InputOutput> Display for VM<IO> {
 }
 
 impl VM<StdIO> {
+    /// Create a new Brainfuck VM to execute the given Program.
+    /// Configured to use Stdin and Stdout.
     pub fn new(program: Program) -> Self {
         VM::new_with_io(program, StdIO {})
     }
 }
 
 impl<IO: InputOutput> VM<IO> {
+    /// Create a new Brainfuck VM to execute the given Program.
+    /// Configured to use the given `IO` for input-output.
     pub fn new_with_io(program: Program, io: IO) -> Self {
         VM {
             program,
@@ -61,6 +67,7 @@ impl<IO: InputOutput> VM<IO> {
         }
     }
 
+    /// Runs the VM
     pub fn run(mut self) {
         let mut instruction_ptr = 0;
 
@@ -119,10 +126,7 @@ impl<IO: InputOutput> VM<IO> {
 pub mod tests {
     use std::rc::Rc;
 
-    use crate::{
-        compiler::compile,
-        io::{NoIO, TestIO},
-    };
+    use crate::{compiler::compile, io::TestIO};
 
     use super::*;
 
@@ -150,7 +154,7 @@ pub mod tests {
         let p = compile(src);
         let io = Rc::new(TestIO::new(""));
         let io_clone = io.clone();
-        let mut i = VM::new_with_io(p, io);
+        let i = VM::new_with_io(p, io);
 
         i.run();
         assert_eq!("Hello World!\n", io_clone.output());
@@ -162,7 +166,7 @@ pub mod tests {
         let p = compile(src);
         let io = Rc::new(TestIO::new(""));
         let io_clone = io.clone();
-        let mut i = VM::new_with_io(p, io);
+        let i = VM::new_with_io(p, io);
 
         i.run();
         assert_eq!("666\n", io_clone.output());
@@ -174,7 +178,7 @@ pub mod tests {
         let p = compile(src);
         let io = Rc::new(TestIO::new(""));
         let io_clone = io.clone();
-        let mut i = VM::new_with_io(p, io);
+        let i = VM::new_with_io(p, io);
 
         i.run();
         assert_eq!("3.141\n", io_clone.output());
@@ -187,7 +191,7 @@ pub mod tests {
         let p = compile(src);
         let io = Rc::new(TestIO::new(""));
         let io_clone = io.clone();
-        let mut i = VM::new_with_io(p, io);
+        let i = VM::new_with_io(p, io);
 
         i.run();
         assert_eq!(out, io_clone.output());
@@ -199,7 +203,7 @@ pub mod tests {
         let p = compile(src);
         let io = Rc::new(TestIO::new(""));
         let io_clone = io.clone();
-        let mut i = VM::new_with_io(p, io);
+        let i = VM::new_with_io(p, io);
 
         i.run();
         assert_eq!("1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89", io_clone.output());

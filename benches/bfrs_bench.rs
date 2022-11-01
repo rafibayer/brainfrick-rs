@@ -1,6 +1,6 @@
 use std::fs;
 
-use brainfuck_rs::{compiler::compile, io::NoIO, vm::VM};
+use brainfrick_rs::{compiler::compile, io::NoIO, vm::VM};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 pub fn bench_hello_world(c: &mut Criterion) {
@@ -23,11 +23,19 @@ pub fn bench_fib11(c: &mut Criterion) {
     bench_program(c, "Fib 11", &src);
 }
 
+/// Helper to benchmark a brainfuck program given:
+/// - The Criterion struct
+/// - The benchmark name
+/// - The brainfuck source &str
 fn bench_program(c: &mut Criterion, name: &str, src: &str) {
     let prog = compile(src);
     let vm = VM::new_with_io(prog, NoIO {});
     c.bench_function(name, |b| {
-        b.iter_batched(|| vm.clone(), |mut vm| vm.run(), criterion::BatchSize::SmallInput)
+        b.iter_batched(
+            || vm.clone(),
+            |vm| black_box(vm.run()),
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 
