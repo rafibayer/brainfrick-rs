@@ -72,10 +72,6 @@ impl<IO: InputOutput> VM<IO> {
         let mut instruction_ptr = 0;
 
         while instruction_ptr < self.program.instructions.len() {
-            // unless we encounter a loop, we will go to the next
-            // instruciton after this one
-            let mut next_instruction_pointer = instruction_ptr + 1;
-
             // current instruction to execute
             let instruction = &self.program.instructions[instruction_ptr];
 
@@ -92,12 +88,12 @@ impl<IO: InputOutput> VM<IO> {
                 Instruction::In => self.data[self.ptr] = self.io.getch(),
                 Instruction::Loop => {
                     if self.data[self.ptr] == 0u8 {
-                        next_instruction_pointer = self.program.loop_map[instruction_ptr] + 1;
+                        instruction_ptr = self.program.loop_map[instruction_ptr];
                     }
                 }
                 Instruction::End => {
                     if self.data[self.ptr] != 0u8 {
-                        next_instruction_pointer = self.program.loop_map[instruction_ptr] + 1;
+                        instruction_ptr = self.program.loop_map[instruction_ptr];
                     }
                 }
                 Instruction::Clear => {
@@ -113,7 +109,7 @@ impl<IO: InputOutput> VM<IO> {
                 Instruction::NoOp => {}
             };
 
-            instruction_ptr = next_instruction_pointer;
+            instruction_ptr += 1;
         }
     }
 }

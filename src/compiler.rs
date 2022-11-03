@@ -96,7 +96,7 @@ fn get_optimizers() -> Vec<OptimizerType> {
         NoOpReducer,
         // contract [-]
         ClearLoop,
-        // contract single target copys
+        // contract single target copy's
         CopyLoop,
     ]
 }
