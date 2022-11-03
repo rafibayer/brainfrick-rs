@@ -16,8 +16,6 @@ pub enum Instruction {
     End,
 
     // Optimized instructions used by the compiler
-    /// Compiler-internal placeholder
-    NoOp,
     /// Clear the current cell
     Clear,
     /// Alter the cell specified by its offset relative to the current cell

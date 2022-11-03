@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::{
     compiler::Program,
-    instruction::Instruction,
+    instruction::Instruction::*,
     io::{InputOutput, StdIO},
 };
 
@@ -77,36 +77,35 @@ impl<IO: InputOutput> VM<IO> {
 
             // instruction implementations
             match instruction {
-                Instruction::Shift(count) => self.ptr = (self.ptr as isize + count) as usize,
-                Instruction::Alt(amount) => {
+                Shift(count) => self.ptr = (self.ptr as isize + count) as usize,
+                Alt(amount) => {
                     self.data[self.ptr] = match *amount >= 0 {
                         true => self.data[self.ptr].wrapping_add(*amount as u8),
                         false => self.data[self.ptr].wrapping_sub(-amount as u8),
                     };
                 }
-                Instruction::Out => self.io.print(self.data[self.ptr]),
-                Instruction::In => self.data[self.ptr] = self.io.getch(),
-                Instruction::Loop => {
+                Out => self.io.print(self.data[self.ptr]),
+                In => self.data[self.ptr] = self.io.getch(),
+                Loop => {
                     if self.data[self.ptr] == 0u8 {
                         instruction_ptr = self.program.loop_map[instruction_ptr];
                     }
                 }
-                Instruction::End => {
+                End => {
                     if self.data[self.ptr] != 0u8 {
                         instruction_ptr = self.program.loop_map[instruction_ptr];
                     }
                 }
-                Instruction::Clear => {
+                Clear => {
                     // optimized version of [-]
                     self.data[self.ptr] = 0u8;
                 }
-                Instruction::CopyClear { mul, offset } => {
+                CopyClear { mul, offset } => {
                     let target_d_ptr = ((self.ptr as isize + offset) as usize) % MEM;
                     let new_value = self.data[target_d_ptr].wrapping_add(self.data[self.ptr] * mul);
                     self.data[self.ptr] = 0u8;
                     self.data[target_d_ptr] = new_value;
                 }
-                Instruction::NoOp => {}
             };
 
             instruction_ptr += 1;

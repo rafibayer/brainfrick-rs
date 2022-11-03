@@ -119,7 +119,7 @@ impl Optimizer for OptimizerType {
             OptimizerType::Contraction => contraction_optimizer(instructions),
             OptimizerType::ClearLoop => clear_loop_optimizer(instructions),
             OptimizerType::CopyLoop => copy_loop_optimizer(instructions),
-            OptimizerType::NoOpReducer => no_op_reducer(instructions),
+            OptimizerType::NoOpReducer => no_op_optimizer(instructions),
         }
     }
 }
@@ -216,12 +216,12 @@ fn copy_loop_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
 }
 
 /// Remove NoOp, Alt(0), Shift(0) instructions
-fn no_op_reducer(instructions: Vec<Instruction>) -> Vec<Instruction> {
+fn no_op_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
     use Instruction::*;
     let mut output = vec![];
 
     for instruction in instructions {
-        if !matches!(instruction, NoOp | Alt(0) | Shift(0)) {
+        if !matches!(instruction, Alt(0) | Shift(0)) {
             output.push(instruction);
         }
     }
