@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    fmt::Display,
-    hash::{BuildHasherDefault, Hasher},
-};
+use std::fmt::Display;
 
 use crate::instruction::Instruction;
 
@@ -16,7 +12,7 @@ struct CompilerStats {
 #[derive(Debug, Clone)]
 pub struct Program {
     pub instructions: Vec<Instruction>,
-    pub loop_map: HashMap<usize, usize, BuildIdentityHasher>,
+    pub loop_map: Vec<usize>,
     stats: CompilerStats,
 }
 
@@ -59,16 +55,18 @@ pub fn compile(src: &str) -> Program {
     let output_instructions = instructions.len();
 
     // match loop instructions, must happen last because
-    // optimizers can change position of loop instructions
-    let mut loop_map = HashMap::with_hasher(BuildIdentityHasher::default());
+    // optimizers can change position of loop instructions.
+    // we could obviously use a map (even with identity hash) here to
+    // save memory, but the perf gain of using a vec is massive (-35% time).
+    let mut loop_map = vec![0; instructions.len()];
     let mut stack = Vec::new();
     for (ptr, ins) in instructions.iter().enumerate() {
         match *ins {
             Instruction::Loop => stack.push(ptr),
             Instruction::End => {
                 let open = stack.pop().unwrap();
-                loop_map.insert(open, ptr);
-                loop_map.insert(ptr, open);
+                loop_map[open] = ptr;
+                loop_map[ptr] = open;
             }
             _ => {}
         }
@@ -181,7 +179,7 @@ fn clear_loop_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
     output
 }
 
-/// Replace copy-to/multiply loops with Copy+Clear instructions
+/// Replace copy-to/multiply loops with CopyClear instructions
 fn copy_loop_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
     use Instruction::*;
     let mut output = Vec::new();
@@ -191,25 +189,23 @@ fn copy_loop_optimizer(instructions: Vec<Instruction>) -> Vec<Instruction> {
 
         if output.len() >= 6 {
             match output[output.len() - 6..] {
-                // ex: "[->>>++<<<]" -> Copy { mul: 2, offset: 3 }, Clear
+                // ex: "[->>>++<<<]" -> CopyClear { mul: 2, offset: 3 }
                 [Loop, Alt(-1), Shift(off1), Alt(x), Shift(off2), End] if x > 0 && off1 == -off2 => {
                     remove_n(&mut output, 6);
 
-                    output.push(Copy {
+                    output.push(CopyClear {
                         mul: x as u8,
                         offset: off1,
                     });
-                    output.push(Clear);
                 }
-                // ex: "[>>---<<+-]" -> Copy { mul: -3, offset: 2 }, Clear
+                // ex: "[>>---<<+-]" -> CopyClear { mul: -3, offset: 2 }
                 [Loop, Shift(off1), Alt(x), Shift(off2), Alt(-1), End] if x > 0 && off1 == -off2 => {
                     remove_n(&mut output, 6);
 
-                    output.push(Copy {
+                    output.push(CopyClear {
                         mul: x as u8,
                         offset: off1,
                     });
-                    output.push(Clear);
                 }
                 _ => {}
             }
@@ -238,30 +234,6 @@ fn remove_n<T>(vec: &mut Vec<T>, n: usize) {
     let final_length = vec.len().saturating_sub(n);
     vec.truncate(final_length);
 }
-
-/// Hasher used for loop brace matching.
-/// We don't need our hash to be DOS resistent, just fast.
-// https://users.rust-lang.org/t/whats-the-most-memory-efficient-way-to-store-a-sparse-vec-while-preserving-the-addresses-without-sacrificing-a-significant-amount-access-speed/25577/25
-#[derive(Debug, Clone, Copy, Default)]
-pub struct IdentityHasher(usize);
-
-impl Hasher for IdentityHasher {
-    fn finish(&self) -> u64 {
-        // todo: static_assert
-        // debug_assert!(self.0 < u64::MAX as usize);
-        self.0 as u64
-    }
-
-    fn write(&mut self, _: &[u8]) {
-        unimplemented!("only supports usize");
-    }
-
-    fn write_usize(&mut self, i: usize) {
-        self.0 = i;
-    }
-}
-
-type BuildIdentityHasher = BuildHasherDefault<IdentityHasher>;
 
 #[cfg(test)]
 mod tests {
@@ -300,7 +272,7 @@ mod tests {
         let input = vec![Loop, Alt(-1), Shift(5), Alt(1), Shift(-5), End];
 
         let output = copy_loop_optimizer(input);
-        assert_eq!(vec![Copy { mul: 1, offset: 5 }, Clear], output);
+        assert_eq!(vec![CopyClear { mul: 1, offset: 5 }], output);
     }
 
     #[test]
@@ -309,7 +281,7 @@ mod tests {
         let input = vec![Loop, Alt(-1), Shift(-3), Alt(1), Shift(3), End];
 
         let output = copy_loop_optimizer(input);
-        assert_eq!(vec![Copy { mul: 1, offset: -3 }, Clear], output);
+        assert_eq!(vec![CopyClear { mul: 1, offset: -3 }], output);
     }
 
     #[test]
@@ -318,6 +290,6 @@ mod tests {
         let input = vec![Loop, Alt(-1), Shift(3), Alt(4), Shift(-3), End];
 
         let output = copy_loop_optimizer(input);
-        assert_eq!(vec![Copy { mul: 4, offset: 3 }, Clear], output);
+        assert_eq!(vec![CopyClear { mul: 4, offset: 3 }], output);
     }
 }

@@ -83,38 +83,34 @@ impl<IO: InputOutput> VM<IO> {
             match instruction {
                 Instruction::Shift(count) => self.ptr = (self.ptr as isize + count) as usize,
                 Instruction::Alt(amount) => {
-                    let new_value = match amount {
-                        _ if *amount > 0 => self.data[self.ptr].wrapping_add(*amount as u8),
-                        _ if *amount < 0 => self.data[self.ptr].wrapping_sub(-amount as u8),
-                        _ => self.data[self.ptr],
+                    self.data[self.ptr] = match *amount >= 0 {
+                        true => self.data[self.ptr].wrapping_add(*amount as u8),
+                        false => self.data[self.ptr].wrapping_sub(-amount as u8),
                     };
-                    self.data[self.ptr] = new_value;
                 }
                 Instruction::Out => self.io.print(self.data[self.ptr]),
                 Instruction::In => self.data[self.ptr] = self.io.getch(),
                 Instruction::Loop => {
                     if self.data[self.ptr] == 0u8 {
-                        next_instruction_pointer = self.program.loop_map[&instruction_ptr] + 1;
+                        next_instruction_pointer = self.program.loop_map[instruction_ptr] + 1;
                     }
                 }
                 Instruction::End => {
                     if self.data[self.ptr] != 0u8 {
-                        next_instruction_pointer = self.program.loop_map[&instruction_ptr] + 1;
+                        next_instruction_pointer = self.program.loop_map[instruction_ptr] + 1;
                     }
                 }
                 Instruction::Clear => {
                     // optimized version of [-]
                     self.data[self.ptr] = 0u8;
                 }
-                Instruction::Copy { mul, offset } => {
+                Instruction::CopyClear { mul, offset } => {
                     let target_d_ptr = ((self.ptr as isize + offset) as usize) % MEM;
-                    let new_value =
-                        self.data[target_d_ptr].wrapping_add(self.data[self.ptr].wrapping_mul(*mul));
+                    let new_value = self.data[target_d_ptr].wrapping_add(self.data[self.ptr] * mul);
+                    self.data[self.ptr] = 0u8;
                     self.data[target_d_ptr] = new_value;
                 }
-                Instruction::NoOp => {
-                    panic!("NoOp found in program!");
-                }
+                Instruction::NoOp => {}
             };
 
             instruction_ptr = next_instruction_pointer;
@@ -137,15 +133,15 @@ pub mod tests {
         let p = compile("[->.<][[]][]");
         let i = VM::new(p);
 
-        assert_eq!(8, i.program.loop_map.len());
-        assert_eq!(0, i.program.loop_map[&5]);
-        assert_eq!(5, i.program.loop_map[&0]);
-        assert_eq!(6, i.program.loop_map[&9]);
-        assert_eq!(9, i.program.loop_map[&6]);
-        assert_eq!(7, i.program.loop_map[&8]);
-        assert_eq!(8, i.program.loop_map[&7]);
-        assert_eq!(10, i.program.loop_map[&11]);
-        assert_eq!(11, i.program.loop_map[&10]);
+        assert_eq!(12, i.program.loop_map.len());
+        assert_eq!(0, i.program.loop_map[5]);
+        assert_eq!(5, i.program.loop_map[0]);
+        assert_eq!(6, i.program.loop_map[9]);
+        assert_eq!(9, i.program.loop_map[6]);
+        assert_eq!(7, i.program.loop_map[8]);
+        assert_eq!(8, i.program.loop_map[7]);
+        assert_eq!(10, i.program.loop_map[11]);
+        assert_eq!(11, i.program.loop_map[10]);
     }
 
     #[test]

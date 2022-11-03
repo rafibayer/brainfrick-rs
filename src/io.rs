@@ -13,10 +13,12 @@ pub trait InputOutput {
 pub struct StdIO {}
 
 impl InputOutput for StdIO {
+    #[inline]
     fn getch(&self) -> u8 {
         std::io::stdin().bytes().next().unwrap().unwrap()
     }
 
+    #[inline]
     fn print(&self, byte: u8) {
         print!("{}", byte as char)
     }

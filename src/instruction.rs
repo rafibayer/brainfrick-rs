@@ -22,7 +22,7 @@ pub enum Instruction {
     Clear,
     /// Alter the cell specified by its offset relative to the current cell
     /// by the current cells value times `mul`
-    Copy { mul: u8, offset: isize },
+    CopyClear { mul: u8, offset: isize },
 }
 
 impl TryFrom<char> for Instruction {
