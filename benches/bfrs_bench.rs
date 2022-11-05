@@ -1,3 +1,6 @@
+//! Brainfuck benchmarks. Used to benchmark `VM` performance
+//! while executing various sample brainfuck `Program`s
+
 use std::fs;
 
 use brainfrick_rs::{compiler::compile, io::NoIO, vm::VM};
@@ -24,13 +27,15 @@ pub fn bench_fib11(c: &mut Criterion) {
 }
 
 /// Helper to benchmark a brainfuck program given:
-/// - The Criterion struct
+/// - The `Criterion` struct
 /// - The benchmark name
-/// - The brainfuck source &str
+/// - The brainfuck source `&str`
 fn bench_program(c: &mut Criterion, name: &str, src: &str) {
     let prog = compile(src);
     let vm = VM::new_with_io(prog, NoIO {});
     c.bench_function(name, |b| {
+        // batched iteration helps us omit
+        // the cost of cloning `vm` from our measurements
         b.iter_batched(
             || vm.clone(),
             |vm| black_box(vm.run()),

@@ -1,3 +1,7 @@
+//! The brainfuck compiler.
+//! Produces an optimized brainfuck `Program`
+//! given brainfuck source code.
+
 use std::fmt::Display;
 
 use crate::instruction::Instruction;

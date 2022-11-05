@@ -5,10 +5,16 @@ version = "0.1.0"
 edition = "2021"
 default-run="bfrs"
 
+# without this, mandelbrot test takes too long
+[profile.test] 
+opt-level = 3
+
+# for profiling
 [profile.release-dbg]
 inherits = "release"
 debug = true
 
+# to shorten binary name from "brainfrick-rs" to "bfrs"
 [[bin]]
 name = "bfrs"
 path = "src/main.rs"

@@ -1,7 +1,7 @@
 //! Author: Rafael Bayer
 //! Date: 2022-10-26
 //!
-//! Program: Brainfuck
+//! brainfrick-rs
 
 use std::{fs, path::PathBuf};
 

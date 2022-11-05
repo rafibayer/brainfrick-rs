@@ -1,3 +1,8 @@
+//! Defines the brainfuck `Instruction` set used
+//! by the brainfuck `VM`. Includes additional non-standard
+//! instructions that are emitted by the `compiler` for
+//! certain optimizations.
+
 /// Brainfuck VM Instructions
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instruction {

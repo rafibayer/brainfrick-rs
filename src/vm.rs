@@ -1,3 +1,7 @@
+//! The brainfuck `VM`. Used to execute a given
+//! Brainfuck `Program`. Can be configured
+//! to use different `InputOutput` implementations.
+
 use std::fmt::Display;
 
 use crate::{
@@ -77,15 +81,21 @@ impl<IO: InputOutput> VM<IO> {
 
             // instruction implementations
             match instruction {
-                Shift(count) => self.ptr = (self.ptr as isize + count) as usize,
+                Shift(count) => {
+                    self.ptr = (self.ptr as isize + count) as usize;
+                }
                 Alt(amount) => {
                     self.data[self.ptr] = match *amount >= 0 {
                         true => self.data[self.ptr].wrapping_add(*amount as u8),
                         false => self.data[self.ptr].wrapping_sub(-amount as u8),
                     };
                 }
-                Out => self.io.print(self.data[self.ptr]),
-                In => self.data[self.ptr] = self.io.getch(),
+                Out => {
+                    self.io.print(self.data[self.ptr]);
+                }
+                In => {
+                    self.data[self.ptr] = self.io.getch();
+                }
                 Loop => {
                     if self.data[self.ptr] == 0u8 {
                         instruction_ptr = self.program.loop_map[instruction_ptr];
@@ -121,8 +131,8 @@ pub mod tests {
 
     use super::*;
 
-    // todo: this test will break if compiler
-    // change the braces in the output program
+    // this test will break if compiler
+    // changes the braces in the output program
     #[test]
     fn test_bracket_matching() {
         let p = compile("[->.<][[]][]");
@@ -198,5 +208,19 @@ pub mod tests {
 
         i.run();
         assert_eq!("1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89", io_clone.output());
+    }
+
+    #[test]
+    fn test_mandelbrot() {
+        let src = include_str!("..\\samples\\mandelbrot.bf");
+        let out = include_str!("..\\samples\\out\\mandelbrot.txt");
+
+        let p = compile(src);
+        let io = Rc::new(TestIO::new(""));
+        let io_clone = io.clone();
+        let i = VM::new_with_io(p, io);
+
+        i.run();
+        assert_eq!(out, io_clone.output());
     }
 }

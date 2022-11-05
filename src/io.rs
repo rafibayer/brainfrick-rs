@@ -1,3 +1,6 @@
+//! The io module. Defines the `InputOutput` trait
+//! and several implementors
+
 use core::panic;
 use std::{cell::RefCell, collections::VecDeque, io::Read, rc::Rc};
 
